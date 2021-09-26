@@ -1,7 +1,9 @@
 data/
 *.wav
 *.txt
-
+A-Hackers-AI-Voice-Assistant-master/
+speech_command*
+SpeechCommands/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
