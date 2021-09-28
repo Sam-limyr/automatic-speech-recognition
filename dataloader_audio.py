@@ -1,7 +1,6 @@
 import os
 import torch
 import torchaudio
-import torchaudio.transforms as T
 from utils import TextProcess
 
 # n_fft = 2048
@@ -39,10 +38,8 @@ class AudioDataset(torch.utils.data.Dataset):
                     labels.append(f_input.read())
         self.labels = labels
         self.audio_dir = audio_dir
-        self.transform = torch.nn.Sequential(
-            T.MFCC()
-            # T.LogMelSpec(sample_rate=sample_rate, n_mels=n_feats,  win_length=160, hop_length=80)
-        )
+        self.transform = transform
+        self.text_process = TextProcess()
 
     def __len__(self):
         return len(os.listdir(self.audio_dir))
@@ -50,19 +47,47 @@ class AudioDataset(torch.utils.data.Dataset):
     def __getitem__(self, index):
         audio_path = os.path.join(self.audio_dir, os.listdir(self.audio_dir)[index])
         waveform, sample_rate = torchaudio.load(audio_path)
-        spectogram = self.transform(waveform)
+        waveform = torch.mean(waveform, dim=0)#.unsqueeze(0)
+        if self.transform:
+            waveform = self.transform(waveform)
 
-        label = self.text_process.text_to_int_sequence(self.labels.iloc[index])
-        return spectogram, label
+        label = self.text_process.clean_text(self.labels[index])
+        # print(label)
+        label = self.text_process.text_to_int_sequence(label)
+        # print(label)
+        label = torch.tensor(label)
+        return waveform, label
 
 
-# def collate_fn(data):
-#     spectograms = []
-#     labels = []
-#     input_lengths = []
-#     label_lengths = []
 
-#     for (spectogram, label, input_length, label_length) in data:
+
+
+
+
+def pad_sequence(batch):
+    # Make all tensor in a batch the same length by padding with zeros
+    batch = [item.t() for item in batch]
+    batch = torch.nn.utils.rnn.pad_sequence(batch, batch_first=True, padding_value=0.)
+    return batch#.permute(0, 2, 1)
+
+
+def collate_fn(batch):
+
+    # A data tuple has the form:
+    # waveform, sample_rate, label, speaker_id, utterance_number
+
+    tensors, targets = [], []
+
+    # Gather in lists, and encode labels as indices
+    for waveform, label in batch:
+        tensors += [waveform]
+        targets += [label]
+
+    # Group the list of tensors into a batched tensor
+    tensors = pad_sequence(tensors)
+    targets = torch.stack(targets)
+
+    return tensors, targets
         
 
 

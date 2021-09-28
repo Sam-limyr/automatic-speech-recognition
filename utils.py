@@ -1,4 +1,6 @@
 import torch
+import num2words
+import re
 
 class TextProcess:
 	def __init__(self):
@@ -57,6 +59,35 @@ class TextProcess:
 		for i in labels:
 			string.append(self.index_map[i])
 		return ''.join(string).replace('<SPACE>', ' ')
+
+	# methods to clean text
+	def clean_text(self, text):
+		text = text.lower()
+		text = self.remove_punctuations(text)
+		text = self.convert_year_to_words(text)
+		text = self.convert_num_to_words(text)
+		text = text.replace('-', ' ')
+		return text
+
+	def convert_year_to_words(self, text):
+	    text = ' '.join([num2words.num2words(i, to='year') if (i.isdigit() & (len(i) == 4)) else i for i in text.split()])
+	    return text
+
+	def convert_num_to_words(self, text):
+	    text = ' '.join([num2words.num2words(i) if i.isdigit() else i for i in text.split()])
+	    return text
+
+	def remove_punctuations(self, text):
+		text = re.sub(r'[^\w\s]', ' ', text)
+		return text
+
+
+
+	        # label = self.text_process.remove_punctuations(self.labels[index])
+        # label = self.text_process.convert_year_to_words(self.labels[index])
+        # label = self.text_process.convert_num_to_words(self.labels[index])
+        # convert_num_to_words
+
 
 
 # def GreedyDecoder(output, labels, label_lengths, blank_label=28, collapse_repeated=True):
