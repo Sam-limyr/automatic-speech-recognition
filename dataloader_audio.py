@@ -1,6 +1,7 @@
 import os
 import torch
 import torchaudio
+import torchaudio.transforms as T
 from utils import TextProcess
 
 # n_fft = 2048
@@ -29,16 +30,23 @@ class AudioDataset(torch.utils.data.Dataset):
     #     "specaug_rate": 0.5, "specaug_policy": 3,
     #     "time_mask": 70, "freq_mask": 15     }
 
-    def __init__(self, audio_dir, label_dir, transform=None):
+    def __init__(self, audio_dir, label_dir, sample_rate=16000, n_feats=128, transform=None):
         labels = []
-        for file in os.listdir(label_dir):
+        for file in os.listdir(label_dir): # load labels from directory to list
             if file.endswith('.txt'):
                 filepath = os.path.join(label_dir, file)
                 with open(filepath) as f_input:
                     labels.append(f_input.read())
         self.labels = labels
         self.audio_dir = audio_dir
-        self.transform = transform
+        if transform:
+            self.transform = transform
+        else:
+            self.transform = torch.nn.Sequential(
+                T.MFCC(sample_rate=sample_rate, n_mfcc=n_feats, melkwargs={'n_mels': n_feats}),
+                # ToTensor()
+                # T.LogMelSpec(sample_rate=sample_rate, n_mels=n_feats,  win_length=160, hop_length=80)
+            )
         self.text_process = TextProcess()
 
     def __len__(self):
@@ -48,15 +56,17 @@ class AudioDataset(torch.utils.data.Dataset):
         audio_path = os.path.join(self.audio_dir, os.listdir(self.audio_dir)[index])
         waveform, sample_rate = torchaudio.load(audio_path)
         waveform = torch.mean(waveform, dim=0)#.unsqueeze(0)
-        if self.transform:
-            waveform = self.transform(waveform)
-
+        spectrogram = self.transform(waveform)
         label = self.text_process.clean_text(self.labels[index])
         # print(label)
         label = self.text_process.text_to_int_sequence(label)
         # print(label)
         label = torch.tensor(label)
-        return waveform, label
+
+        spec_len = spectrogram.shape[-1] // 2
+        label_len = len(label)
+        print(f'length {spec_len}, {label_len}')
+        return spectrogram, label, spec_len, label_len
 
 
 
@@ -76,18 +86,23 @@ def collate_fn(batch):
     # A data tuple has the form:
     # waveform, sample_rate, label, speaker_id, utterance_number
 
-    tensors, targets = [], []
+    spectrograms = []
+    labels = []
+    input_lengths = []
+    label_lengths = []
 
     # Gather in lists, and encode labels as indices
-    for waveform, label in batch:
-        tensors += [waveform]
-        targets += [label]
+    for spectrogram, label, input_length, label_length in batch:
+        spectrograms += [spectrogram]
+        labels += [label]
+        input_lengths += [input_length]
+        label_lengths += [label_length]
 
     # Group the list of tensors into a batched tensor
-    tensors = pad_sequence(tensors)
-    targets = torch.stack(targets)
+    spectrograms = pad_sequence(spectrograms)
+    labels = torch.stack(labels)
 
-    return tensors, targets
+    return spectrograms, labels, input_lengths, label_lengths
         
 
 

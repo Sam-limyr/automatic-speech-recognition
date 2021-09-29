@@ -80,28 +80,3 @@ class TextProcess:
 	def remove_punctuations(self, text):
 		text = re.sub(r'[^\w\s]', ' ', text)
 		return text
-
-
-
-	        # label = self.text_process.remove_punctuations(self.labels[index])
-        # label = self.text_process.convert_year_to_words(self.labels[index])
-        # label = self.text_process.convert_num_to_words(self.labels[index])
-        # convert_num_to_words
-
-
-
-# def GreedyDecoder(output, labels, label_lengths, blank_label=28, collapse_repeated=True):
-# 	arg_maxes = torch.argmax(output, dim=2)
-# 	decodes = []
-# 	targets = []
-# 	for i, args in enumerate(arg_maxes):
-# 		decode = []
-# 		targets.append(textprocess.int_to_text_sequence(
-# 				labels[i][:label_lengths[i]].tolist()))
-# 		for j, index in enumerate(args):
-# 			if index != blank_label:
-# 				if collapse_repeated and j != 0 and index == args[j -1]:
-# 					continue
-# 				decode.append(index.item())
-# 		decodes.append(textprocess.int_to_text_sequence(decode))
-# 	return decodes, targets
