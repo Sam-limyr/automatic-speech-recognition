@@ -73,18 +73,10 @@ class AudioDataset(torch.utils.data.Dataset):
 
 
 
-
-def pad_sequence(batch):
-    # Make all tensor in a batch the same length by padding with zeros
-    batch = [item.t() for item in batch]
-    batch = torch.nn.utils.rnn.pad_sequence(batch, batch_first=True, padding_value=0.)
-    return batch#.permute(0, 2, 1)
-
-
 def collate_fn(batch):
 
     # A data tuple has the form:
-    # waveform, sample_rate, label, speaker_id, utterance_number
+    # spectrogram, label, input_length, label_length
 
     spectrograms = []
     labels = []
@@ -99,12 +91,11 @@ def collate_fn(batch):
         label_lengths += [label_length]
 
     # Group the list of tensors into a batched tensor
-    spectrograms = pad_sequence(spectrograms)
-    labels = torch.stack(labels)
+    spectrograms = torch.nn.utils.rnn.pad_sequence(spectrograms, batch_first=True, padding_value=0.)
+    labels = torch.nn.utils.rnn.pad_sequence(labels, batch_first=True) #torch.stack(labels)
 
     return spectrograms, labels, input_lengths, label_lengths
         
-
 
 
 
