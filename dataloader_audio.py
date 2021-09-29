@@ -4,31 +4,7 @@ import torchaudio
 import torchaudio.transforms as T
 from utils import TextProcess
 
-# n_fft = 2048
-# win_length = None
-# hop_length = 512
-# n_mels = 256
-# n_mfcc = 256
-# log_mels = True
-# sample_rate = 14000
-# mfcc_transform = T.MFCC(
-#     sample_rate=sample_rate,
-#     n_mfcc=n_mfcc,
-#     log_mels= log_mels,
-#     melkwargs={
-#       'n_fft': n_fft,
-#       'n_mels': n_mels,
-#       'hop_length': hop_length,
-#       'mel_scale': 'htk',
-#     }
-# )
-
 class AudioDataset(torch.utils.data.Dataset):
-
-    # parameters = {
-    #     "sample_rate": 16000, "n_feats": 81,
-    #     "specaug_rate": 0.5, "specaug_policy": 3,
-    #     "time_mask": 70, "freq_mask": 15     }
 
     def __init__(self, audio_dir, label_dir, sample_rate=16000, n_feats=128, transform=None):
         labels = []
@@ -65,11 +41,8 @@ class AudioDataset(torch.utils.data.Dataset):
 
         spec_len = spectrogram.shape[-1] // 2
         label_len = len(label)
-        print(f'length {spec_len}, {label_len}')
+        print(f'Spectrogram length {spectrogram.shape}, label length {label_len}')
         return spectrogram, label, spec_len, label_len
-
-
-
 
 
 
@@ -85,13 +58,14 @@ def collate_fn(batch):
 
     # Gather in lists, and encode labels as indices
     for spectrogram, label, input_length, label_length in batch:
-        spectrograms += [spectrogram]
+        spectrograms += [spectrogram.squeeze(0).transpose(0, 1)]
         labels += [label]
         input_lengths += [input_length]
         label_lengths += [label_length]
 
     # Group the list of tensors into a batched tensor
-    spectrograms = torch.nn.utils.rnn.pad_sequence(spectrograms, batch_first=True, padding_value=0.)
+    spectrograms = torch.nn.utils.rnn.pad_sequence(spectrograms, batch_first=True).transpose(1, 2)
+    print(spectrograms.shape)
     labels = torch.nn.utils.rnn.pad_sequence(labels, batch_first=True) #torch.stack(labels)
 
     return spectrograms, labels, input_lengths, label_lengths
