@@ -2,7 +2,7 @@ import os
 import torch
 import torchaudio
 import torchaudio.transforms as T
-from utils import TextProcess
+from utils.text import TextProcess
 
 class AudioDataset(torch.utils.data.Dataset):
     """
