@@ -179,6 +179,9 @@ def scrape_data_from_url(url):
 
 
 def main():
+    if not os.path.isdir(DATA_STORAGE_ROOT):
+        os.mkdir(DATA_STORAGE_ROOT)
+
     for url in TEST_URLS:
         logger.info(f"Scraping from url: <{url}>")
         scrape_data_from_url(url)
