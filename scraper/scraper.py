@@ -17,8 +17,7 @@ logger = logging.getLogger()
 logging.basicConfig(level="INFO", format="%(levelname)s: %(filename)s: %(message)s")
 
 # Storage locations
-DATA_STORAGE_ROOT = os.path.join(os.getcwd(), "scraper", "data")
-print('======test', os.getcwd())
+DATA_STORAGE_ROOT = os.path.join(os.getcwd(), "data")
 
 # Scraper constants
 TED_URL_HOMEPAGE = "https://www.ted.com"
@@ -53,10 +52,6 @@ def get_all_video_urls(base_url):
     while True:
         # i.e. search from "page=1", "page=2", "page=3"...
         page_number += 1
-
-        # Only doing proof of concept
-        if page_number > 1:
-            break
 
         response = requests.get(base_url + str(page_number))
 

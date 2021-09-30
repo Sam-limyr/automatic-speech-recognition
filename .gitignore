@@ -1,11 +1,11 @@
 data/
 *.wav
 *.txt
-A-Hackers-AI-Voice-Assistant-master/
 speech_command*
 SpeechCommands/
 train-clean*
 Libri*
+scraper/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
