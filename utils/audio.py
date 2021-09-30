@@ -1,3 +1,7 @@
+"""
+https://pytorch.org/tutorials/intermediate/speech_command_recognition_with_torchaudio_tutorial.html
+"""
+
 import torch
 import matplotlib.pyplot as plt
 import matplotlib as mpl
