@@ -12,19 +12,67 @@ import os
 import re
 from urllib import request
 
+# Logger setup
 logger = logging.getLogger()
 logging.basicConfig(level="INFO", format="%(levelname)s: %(filename)s: %(message)s")
-
-TEST_URLS = [
-    "https://www.ted.com/talks/ashley_whillans_3_rules_for_better_work_life_balance"
-]
 
 # Storage locations
 DATA_STORAGE_ROOT = os.path.join(os.getcwd(), "scraper", "data")
 
+# Scraper constants
+TED_URL_HOMEPAGE = "https://www.ted.com"
+TED_URL_PREFIX = "https://www.ted.com/talks/"
+TED_POPULAR_PAGE_URL = "https://www.ted.com/talks?sort=popular&page="
 
-# General constants
-START_OF_TED_URL = "https://www.ted.com/talks/"
+
+def main():
+    if not os.path.isdir(DATA_STORAGE_ROOT):
+        try:
+            os.mkdir(DATA_STORAGE_ROOT)
+        except FileNotFoundError:
+            logging.error("Unable to create data storage folder.")
+            raise Exception("Ensure that the current working directory is set to the project root.")
+
+    video_urls = get_all_video_urls(TED_POPULAR_PAGE_URL)
+
+    for url in video_urls:
+        logger.info(f"Scraping from url: <{url}>")
+        scrape_data_from_url(url)
+
+
+def get_all_video_urls(base_url):
+    """
+    Gets all video urls, given the base url page. It is assumed that the base url page is in page format (see comments).
+    :param base_url: The base url page (e.g. front page, 'all videos' page) to start searching from.
+    :return: Returns a list of all video urls found.
+    """
+    urls = []
+    page_number = 0
+
+    while True:
+        # i.e. search from "page=1", "page=2", "page=3"...
+        page_number += 1
+
+        # Only doing proof of concept
+        if page_number > 1:
+            break
+
+        response = requests.get(base_url + str(page_number))
+
+        page_soup = BeautifulSoup(response.text, "html.parser")
+        video_elements = page_soup.select("div.container.results div.col")
+
+        # If no more video urls exist, we have reached the end of the pages
+        if len(video_elements) == 0:
+            break
+
+        for element in video_elements:
+            url_object = element.select("div.media__image a.ga-link")
+            url = TED_URL_HOMEPAGE + url_object[0].get("href")
+            urls.append(url)
+            logger.debug(f"Url found: {url}")
+
+    return urls
 
 
 def scrape_data_from_url(url):
@@ -37,8 +85,8 @@ def scrape_data_from_url(url):
     :param url: The url to scrape data from.
     :return: No return value.
     """
-    assert url.startswith(START_OF_TED_URL), f"Url provided does not start with expected url: <{url}>"
-    saved_folder_name = url.replace(START_OF_TED_URL, "")
+    assert url.startswith(TED_URL_PREFIX), f"Url provided does not start with expected url: <{url}>"
+    saved_folder_name = url.replace(TED_URL_PREFIX, "")
     saved_folder_path = os.path.join(DATA_STORAGE_ROOT, saved_folder_name)
 
     # Check if transcript exists, by attempting to access the page tab
@@ -196,15 +244,6 @@ def save_transcript_text(transcript_text, path_to_save_to):
     with open(transcript_file_saved_location, "w") as file:
         file.writelines(transcript_text)
         logger.info("Transcript text saved.")
-
-
-def main():
-    if not os.path.isdir(DATA_STORAGE_ROOT):
-        os.mkdir(DATA_STORAGE_ROOT)
-
-    for url in TEST_URLS:
-        logger.info(f"Scraping from url: <{url}>")
-        scrape_data_from_url(url)
 
 
 if __name__ == "__main__":
