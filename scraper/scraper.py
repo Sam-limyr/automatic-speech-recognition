@@ -18,6 +18,7 @@ logging.basicConfig(level="INFO", format="%(levelname)s: %(filename)s: %(message
 
 # Storage locations
 DATA_STORAGE_ROOT = os.path.join(os.getcwd(), "scraper", "data")
+print('======test', os.getcwd())
 
 # Scraper constants
 TED_URL_HOMEPAGE = "https://www.ted.com"
@@ -28,7 +29,7 @@ TED_POPULAR_PAGE_URL = "https://www.ted.com/talks?sort=popular&page="
 def main():
     if not os.path.isdir(DATA_STORAGE_ROOT):
         try:
-            os.mkdir(DATA_STORAGE_ROOT)
+            os.makedirs(DATA_STORAGE_ROOT)
         except FileNotFoundError:
             logging.error("Unable to create data storage folder.")
             raise Exception("Ensure that the current working directory is set to the project root.")
