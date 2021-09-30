@@ -5,6 +5,11 @@ import torchaudio.transforms as T
 from utils import TextProcess
 
 class AudioDataset(torch.utils.data.Dataset):
+    """
+    Load data from directory.
+    wav audio is transformed to spectogram.
+    Return (spectrogram, label, spec_len, label_len) to dataloader
+    """
 
     def __init__(self, audio_dir, label_dir, sample_rate=16000, n_feats=128, transform=None):
         labels = []
@@ -48,8 +53,11 @@ class AudioDataset(torch.utils.data.Dataset):
 
 def collate_fn(batch):
 
-    # A data tuple has the form:
-    # spectrogram, label, input_length, label_length
+    """
+    Pad sequence to spectograms and labels by batch
+    A data tuple has the form:
+    spectrogram, label, input_length, label_length
+    """
 
     spectrograms = []
     labels = []
@@ -69,21 +77,3 @@ def collate_fn(batch):
     labels = torch.nn.utils.rnn.pad_sequence(labels, batch_first=True) #torch.stack(labels)
 
     return spectrograms, labels, input_lengths, label_lengths
-        
-
-
-
-
-
-
-if __name__ == '__main__':
-    AUDIO_DIR = 'data/audio'
-    LABEL_DIR = 'data/label'
-
-    training_data = AudioDataset(AUDIO_DIR, LABEL_DIR)
-    # test_data = AudioDataset(AUDIO_DIR, LABEL_DIR)
-
-    print(len(training_data))
-
-    # train_dataloader = torch.utils.data.DataLoader(training_data, batch_size=64, shuffle=True)
-    # test_dataloader = torch.utils.data.DataLoader(test_data, batch_size=64, shuffle=True)
