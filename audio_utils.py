@@ -1,5 +1,7 @@
 import torch
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+mpl.rc('image', cmap='turbo')
 import librosa
 from IPython.display import Audio, display
 

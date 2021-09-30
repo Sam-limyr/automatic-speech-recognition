@@ -64,7 +64,7 @@ def collate_fn(batch):
         label_lengths += [label_length]
 
     # Group the list of tensors into a batched tensor
-    spectrograms = torch.nn.utils.rnn.pad_sequence(spectrograms, batch_first=True).transpose(1, 2)
+    spectrograms = torch.nn.utils.rnn.pad_sequence(spectrograms, batch_first=True, padding_value=0.).unsqueeze(1).transpose(2, 3)
     print(spectrograms.shape)
     labels = torch.nn.utils.rnn.pad_sequence(labels, batch_first=True) #torch.stack(labels)
 
