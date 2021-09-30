@@ -23,22 +23,44 @@ TEST_URLS = [
 DATA_STORAGE_ROOT = os.path.join(os.getcwd(), "scraper", "data")
 
 
-def get_page_data_from_url(url):
-    """
-    Scrapes data from a url, given the url. Uses the 'requests' module to fetch data.
-    Specifically written to scrape data from the TEDTalks page (root: https://www.ted.com/talks)
-    :param url: The url to scrape data from.
-    :return: Returns the page data, as a string.
-    """
-    # Locate the transcript tab of the page
-    url = url + "/transcript"
+# General constants
+START_OF_TED_URL = "https://www.ted.com/talks/"
 
+
+def scrape_data_from_url(url):
+    """
+    Attempts to scrape the audio file and transcript text from the given webpage.
+    Specifically written to scrape data from the TEDTalks page (root: https://www.ted.com/talks).
+
+    If either the audio file or the transcript does not exist, then this method will not scrape anything.
+    Otherwise, the data will be saved to a folder marked by the url.
+    :param url: The url to scrape data from.
+    :return: No return value.
+    """
+    assert url.startswith(START_OF_TED_URL), f"Url provided does not start with expected url: <{url}>"
+    saved_folder_name = url.replace(START_OF_TED_URL, "")
+    saved_folder_path = os.path.join(DATA_STORAGE_ROOT, saved_folder_name)
+
+    # Check if transcript exists, by attempting to access the page tab
+    url = url + "/transcript"
     response = requests.get(url)
     if not response.ok:
         logger.warning(f"No transcript exists: <{url}>")
-        return None
+        return
 
-    return response.text
+    page_text = response.text
+    transcript_text = get_page_transcript_text(page_text)
+    if not transcript_text:
+        return
+
+    # Check if audio download exists
+    audio_download_link = get_page_audio_download_link(page_text)
+    if not audio_download_link:
+        return
+
+    # Save to file
+    save_transcript_text(transcript_text, saved_folder_path)
+    download_and_save_audio_file(audio_download_link, saved_folder_path)
 
 
 # Audio constants
@@ -51,27 +73,25 @@ METADATA_PATH_TO_AUDIO = ["__INITIAL_DATA__", "talks", 0, "downloads", "audioDow
 AUDIO_FILE_NAME = "audio.mp3"
 
 
-def parse_audio_from_page_text(page_text, saved_folder_name):
+def get_page_audio_download_link(page_text):
     """
-    Obtains the audio data of a page, given its page text.
+    Obtains the audio data download link of a page, given its page text.
     Specifically written to scrape data from the TEDTalks page (root: https://www.ted.com/talks).
 
     Workflow:
     - Isolate and extract the audio download link from the page text using tag delimiters
-    - Call a download request to the audio download link to obtain the audio
 
     :param page_text: The raw page text from the website, as parsed by the requests module.
-    :param saved_folder_name: The folder name to save this file to.
-    :return: No return value, but will save the audio file to the path in AUDIO_DATA_STORAGE.
+    :return: Returns the audio download link, or None if no link exists.
     """
     if not page_text:
-        logger.error("No page text was passed to audio parser.")
-        return
+        logger.error("No page text was passed to audio download link parser.")
+        return None
 
     raw_metadata = METADATA_REGEX_PATTERN.search(page_text)
     if not raw_metadata:
         logger.warning("No metadata object was found.")
-        return
+        return None
 
     json_metadata = json.loads(raw_metadata.group(1))
 
@@ -81,19 +101,32 @@ def parse_audio_from_page_text(page_text, saved_folder_name):
         try:
             # Note: This deliberately does not distinguish between accessing between:
             #           - a list, using an integer (e.g. 0)
-            #           - a dict, using a key.
+            #           - a dict, using a key (e.g. "some_name").
             # This is because the metadata object combines both nested lists and nested dicts.
             audio_metadata_url = audio_metadata_url[key]
         except (KeyError, IndexError):
             logger.warning("The specified path to the audio download does not exist.")
-            return
+            return None
 
     if not audio_metadata_url:
         logger.warning("No audio download link exists.")
-        return
+        return None
 
-    audio_file_saved_location = os.path.join(DATA_STORAGE_ROOT, saved_folder_name, AUDIO_FILE_NAME)
-    _, _ = request.urlretrieve(audio_metadata_url, filename=audio_file_saved_location)
+    return audio_metadata_url
+
+
+def download_and_save_audio_file(audio_download_url, path_to_save_to):
+    """
+    Downloads an audio file, given its url link. Saves the file to the required folder.
+    :param audio_download_url: The url to download the audio from.
+    :param path_to_save_to: The folder name to save this file to.
+    :return: No return value.
+    """
+    if not os.path.isdir(path_to_save_to):
+        os.mkdir(path_to_save_to)
+
+    audio_file_saved_location = os.path.join(path_to_save_to, AUDIO_FILE_NAME)
+    _, _ = request.urlretrieve(audio_download_url, filename=audio_file_saved_location)
     logger.info("Audio file saved.")
 
 
@@ -106,27 +139,26 @@ TRANSCRIPT_TEXT_PARAGRAPH_TAG = "p"
 TRANSCRIPT_FILE_NAME = "transcript.txt"
 
 
-def parse_transcript_from_page_text(page_text, saved_folder_name):
+def get_page_transcript_text(page_text):
     """
     Obtains the speech transcript of a page, given its page text.
     Specifically written to scrape data from the TEDTalks page (root: https://www.ted.com/talks).
 
     Workflow:
-    - Isolate and extract the transcript from the page text using the front and back comment delimiters
-    - Use BeautifulSoup to tidy up the transcript by removing unnecessary HTML tags
+    - Isolate and extract the transcript from the page text using the front and back comment delimiters.
+    - Use BeautifulSoup to tidy up the transcript by removing unnecessary HTML tags.
 
     :param page_text: The raw page text from the website, as parsed by the requests module.
-    :param saved_folder_name: The folder name to save this file to.
-    :return: No return value, but will save the transcript to the path in TRANSCRIPT_DATA_STORAGE
+    :return: Returns the transcript text, or None if the text does not exist.
     """
     if not page_text:
         logger.error("No page text was passed to transcript parser.")
-        return
+        return None
 
     raw_transcript = TRANSCRIPT_REGEX_PATTERN.search(page_text)
     if not raw_transcript:
         logger.warning("No transcript was found.")
-        return
+        return None
 
     page_soup = BeautifulSoup(raw_transcript.group(1), "html.parser")
 
@@ -147,35 +179,23 @@ def parse_transcript_from_page_text(page_text, saved_folder_name):
 
         transcript.append(paragraph)
 
-    transcript = " ".join(transcript)
-    transcript_file_saved_location = os.path.join(DATA_STORAGE_ROOT, saved_folder_name, TRANSCRIPT_FILE_NAME)
-    with open(transcript_file_saved_location, "w") as file:
-        file.writelines(transcript)
-        logger.info("Transcript text saved.")
+    return " ".join(transcript)
 
 
-# General constants
-START_OF_TED_URL = "https://www.ted.com/talks/"
-
-
-def scrape_data_from_url(url):
+def save_transcript_text(transcript_text, path_to_save_to):
     """
-    Attempts to scrape the audio file and transcript text from the given webpage.
-    Specifically written to scrape data from the TEDTalks page (root: https://www.ted.com/talks).
-
-    If either the audio file or the transcript does not exist, then this method will not scrape anything.
-    Otherwise, the data will be saved to a folder marked by the url.
-    :param url: The url to scrape data from.
+    Saves the transcript text to the required folder as a file.
+    :param transcript_text: The text to write to file.
+    :param path_to_save_to: The folder name to save this file to.
     :return: No return value.
     """
-    assert url.startswith(START_OF_TED_URL), f"URL given does not start with expected URL root: <{url}>"
+    if not os.path.isdir(path_to_save_to):
+        os.mkdir(path_to_save_to)
 
-    page_text = get_page_data_from_url(url)
-    if page_text:
-        saved_folder_name = url.replace(START_OF_TED_URL, "")
-        os.mkdir(os.path.join(DATA_STORAGE_ROOT, saved_folder_name))
-        parse_audio_from_page_text(page_text, saved_folder_name)
-        parse_transcript_from_page_text(page_text, saved_folder_name)
+    transcript_file_saved_location = os.path.join(path_to_save_to, TRANSCRIPT_FILE_NAME)
+    with open(transcript_file_saved_location, "w") as file:
+        file.writelines(transcript_text)
+        logger.info("Transcript text saved.")
 
 
 def main():
