@@ -2,6 +2,7 @@ import os
 import torch
 import torchaudio
 import torchaudio.transforms as T
+from torchaudio.compliance.kaldi import mfcc
 from utils.text import TextProcess
 
 class AudioDataset(torch.utils.data.Dataset):
@@ -20,14 +21,15 @@ class AudioDataset(torch.utils.data.Dataset):
                     labels.append(f_input.read())
         self.labels = labels
         self.audio_dir = audio_dir
-        if transform:
-            self.transform = transform
-        else:
-            self.transform = torch.nn.Sequential(
-                T.MFCC(sample_rate=sample_rate, n_mfcc=n_feats, melkwargs={'n_mels': n_feats}),
-                # ToTensor()
-                # T.LogMelSpec(sample_rate=sample_rate, n_mels=n_feats,  win_length=160, hop_length=80)
-            )
+        self.n_feats = n_feats
+        # if transform:
+        #     self.transform = transform
+        # else:
+        #     self.transform = torch.nn.Sequential(
+        #         T.MFCC(sample_rate=sample_rate, n_mfcc=n_feats, melkwargs={'n_mels': n_feats}),
+        #         # ToTensor()
+        #         # T.LogMelSpec(sample_rate=sample_rate, n_mels=n_feats,  win_length=160, hop_length=80)
+        #     )
         self.text_process = TextProcess()
 
     def __len__(self):
@@ -37,7 +39,7 @@ class AudioDataset(torch.utils.data.Dataset):
         audio_path = os.path.join(self.audio_dir, os.listdir(self.audio_dir)[index])
         waveform, sample_rate = torchaudio.load(audio_path)
         waveform = torch.mean(waveform, dim=0)#.unsqueeze(0)
-        spectrogram = self.transform(waveform)
+        spectrogram = mfcc(waveform, frame_length=25, num_ceps=self.n_feats, num_mel_bins=self.n_feats) # spectrogram = self.transform(waveform)
         label = self.text_process.clean_text(self.labels[index])
         # print(label)
         label = self.text_process.text_to_int_sequence(label)
