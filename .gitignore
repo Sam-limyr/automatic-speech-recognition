@@ -5,7 +5,9 @@ speech_command*
 SpeechCommands/
 train-clean*
 Libri*
-scraper/
+
+# Ignore only the folder used to store data
+scraper/data/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
