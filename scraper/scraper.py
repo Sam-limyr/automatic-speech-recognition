@@ -49,7 +49,7 @@ def main():
 
     # Uncomment to parse SRT transcripts and audio from the TED2SRT website
 
-    _number_of_talks = 10  # Number of talks to attempt to scrape from
+    _number_of_talks = 200  # Number of talks to attempt to scrape from
     _starting_video_id = 100  # Start retrieving from this video id
 
     logging.info("Parsing audio files with SRT transcripts from TED2SRT website...")
