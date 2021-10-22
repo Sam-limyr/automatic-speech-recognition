@@ -48,13 +48,35 @@ def main():
     #     scrape_data_from_url(url)
 
     # Uncomment to parse SRT transcripts and audio from the TED2SRT website
+
+    _number_of_talks = 10  # Number of talks to attempt to scrape from
+    _starting_video_id = 100  # Start retrieving from this video id
+
     logging.info("Parsing audio files with SRT transcripts from TED2SRT website...")
-    video_urls = get_all_srt_video_urls(TED_SRT_HOMEPAGE)
+    # video_urls = get_all_srt_video_urls(TED_SRT_HOMEPAGE)
+    video_urls = generate_all_srt_video_urls(TED_SRT_TALKPAGE, _number_of_talks, starting_video_id=_starting_video_id)
     for url in video_urls:
         scrape_data_from_srt_url(url)
 
 
 ## Code that handles scraping from the TED2SRT website
+
+
+def generate_all_srt_video_urls(base_url, number_of_urls, starting_video_id=1):
+    """
+    Generates a list of urls to attempt to scrape from. This is designed to work specifically for the TED2SRT page.
+    This method will not check whether the links are valid. It will only generate the required links.
+
+    This method works because the TED2SRT page also stores videos mapped to their id. For example, visiting the webpage
+    "homepage/talks/1" returns the 1st video in id.
+    :param base_url: The base url of the TED2SRT talks page.
+    :param number_of_urls: The number of urls to generate.
+    :param starting_video_id: The starting video id, which defaults to the 1st video.
+    :return: Returns a list of urls.
+    """
+    logging.info(f"Generating {number_of_urls} starting from video id {starting_video_id}...")
+    logging.warning("Many of these links might not work. Consider changing the value of _number_of_talks in line 52.")
+    return [base_url + str(video_id) for video_id in range(starting_video_id, starting_video_id + number_of_urls)]
 
 
 # TED2SRT website constants
@@ -83,6 +105,8 @@ def get_all_srt_video_urls(base_url):
 
 
 # TED2SRT specific page constants
+VIDEO_NAME_KEY = "slug"
+
 VIDEO_DOWNLOAD_SUB_URL_KEY = "mediaSlug"
 START_OF_AUDIO_DOWNLOAD_URL = "https://download.ted.com/talks/"
 END_OF_AUDIO_DOWNLOAD_URL = "-320k.mp4"
@@ -107,17 +131,22 @@ def scrape_data_from_srt_url(url):
     page_soup = BeautifulSoup(response.text, "html.parser")
 
     # Identify the metadata object and parse the key phrases needed for video and SRT download
-    talk_metadata_string = page_soup.select("script")[0].string
+    talk_metadata_script = page_soup.select("script")
+    if not talk_metadata_script:
+        logging.warning(f"The url {url} is invalid or has no metadata object. Continuing...")
+        return
+
+    talk_metadata_string = talk_metadata_script[0].string
     talk_metadata_object = literal_eval(talk_metadata_string.split(" = ")[1])
 
     srt_download_keyword = str(talk_metadata_object[VIDEO_SRT_ID_SUB_URL_KEY])
     video_download_keyword = str(talk_metadata_object[VIDEO_DOWNLOAD_SUB_URL_KEY])
+    name_of_video = str(talk_metadata_object[VIDEO_NAME_KEY])
 
     srt_download_url = START_OF_SRT_TRANSCRIPT_URL + srt_download_keyword + END_OF_SRT_TRANSCRIPT_URL
     video_download_url = START_OF_AUDIO_DOWNLOAD_URL + video_download_keyword + END_OF_AUDIO_DOWNLOAD_URL
 
-    saved_folder_name = url.replace(TED_SRT_TALKPAGE, "")
-    saved_folder_path = os.path.join(DATA_STORAGE_ROOT, saved_folder_name)
+    saved_folder_path = os.path.join(DATA_STORAGE_ROOT, name_of_video)
 
     success_status = download_and_save_srt_transcript_text(srt_download_url, saved_folder_path)
     if not success_status:
