@@ -33,7 +33,7 @@ TED_SRT_TALKS = "talks/"
 TED_SRT_TALKPAGE = TED_SRT_HOMEPAGE + TED_SRT_TALKS
 
 
-def main():
+def main(number_of_talks=200, starting_video_id=100):
     if not os.path.isdir(DATA_STORAGE_ROOT):
         try:
             os.makedirs(DATA_STORAGE_ROOT)
@@ -49,8 +49,8 @@ def main():
 
     # Uncomment to parse SRT transcripts and audio from the TED2SRT website
 
-    _number_of_talks = 200  # Number of talks to attempt to scrape from
-    _starting_video_id = 100  # Start retrieving from this video id
+    _number_of_talks = number_of_talks  # Number of talks to attempt to scrape from
+    _starting_video_id = starting_video_id  # Start retrieving from this video id
 
     logging.info("Parsing audio files with SRT transcripts from TED2SRT website...")
     # video_urls = get_all_srt_video_urls(TED_SRT_HOMEPAGE)
